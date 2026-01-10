@@ -30,6 +30,8 @@ class SudokuApp(tk.Tk):
         self.sub_cols = 3
         self.difficulty_level = 1
         self.hints_left = 3
+        self.mistakes = 0
+        self.max_mistakes = 5
         self.player_name = ""
         self.current_puzzle = None
         self.solution = None
@@ -44,7 +46,7 @@ class SudokuApp(tk.Tk):
         container.pack(fill="both", expand=True)
         
         self.frames = {}
-        # ĐĂNG KÝ TẤT CẢ CÁC TRANG Ở ĐÂY
+        # REGISTER ALL PAGES
         for F in (StartPage, DifficultyPage, GamePage, ResultPage, RulesPage, LeaderboardPage):
             frame = F(container, self)
             self.frames[F] = frame
@@ -74,7 +76,7 @@ class SudokuApp(tk.Tk):
         try:
             with open(self.scores_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception:
             return []
 
     def save_score(self, completion_time):
@@ -92,7 +94,7 @@ class SudokuApp(tk.Tk):
             with open(self.scores_file, "w", encoding="utf-8") as f:
                 json.dump(scores, f, indent=4)
         except Exception as e:
-            print(f"Lỗi lưu điểm: {e}")
+            print(f"Error saving score: {e}")
 
     def is_valid(self, board, row, col, num, size, s_rows, s_cols):
         for x in range(size):
@@ -152,10 +154,11 @@ class RulesPage(tk.Frame):
         
         tk.Label(card, text="How to Play Sudoku", font=("Segoe UI", 24, "bold"), bg=BG_CARD, fg=PRIMARY).pack(pady=(0,20))
         rules_text = (
-            "1. The Goal: Fill the grid with numbers from 1 to the grid size.\n"
-            "2. No Duplicates: Each number must be unique in its row, column, and box.\n"
-            "3. Visual Cues: Conflict numbers will turn RED automatically.\n"
-            "4. Winning: Fill all cells correctly and press SUBMIT."
+            "1. The Goal: Fill the grid with numbers correctly.\n"
+            "2. Errors: If you enter a wrong number, it counts as 1 mistake.\n"
+            "3. Game Over: You lose if you make 5 mistakes.\n"
+            "4. Give Up: You can view the full solution at any time.\n"
+            "5. Visual Cues: Conflict numbers will turn RED automatically."
         )
         tk.Label(card, text=rules_text, font=("Segoe UI", 12), bg=BG_CARD, justify="left", fg=TEXT_DARK).pack(pady=10)
         ttk.Button(card, text="BACK TO MENU", style="Main.TButton", command=lambda: controller.show_frame(StartPage)).pack(pady=(20,0))
@@ -192,6 +195,7 @@ class DifficultyPage(tk.Frame):
         self.controller.grid_size = self.size_var.get()
         self.controller.difficulty_level = self.diff_var.get()
         self.controller.hints_left = 3
+        self.controller.mistakes = 0
         
         s = self.controller.grid_size
         if s == 3: self.controller.sub_rows, self.controller.sub_cols = 1, 3
@@ -222,12 +226,17 @@ class GamePage(tk.Frame):
 
         tk.Label(self.sidebar, text="TIME ELAPSED", font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_MUTE).pack(anchor="w")
         self.timer_lbl = tk.Label(self.sidebar, text="00:00", font=("Consolas", 24, "bold"), bg=BG_CARD, fg=PRIMARY)
-        self.timer_lbl.pack(anchor="w", pady=(0, 20))
+        self.timer_lbl.pack(anchor="w", pady=(0, 15))
+
+        tk.Label(self.sidebar, text="MISTAKES", font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_MUTE).pack(anchor="w")
+        self.mistake_lbl = tk.Label(self.sidebar, text="0 / 5", font=("Segoe UI", 18, "bold"), bg=BG_CARD, fg=ERROR_COLOR)
+        self.mistake_lbl.pack(anchor="w", pady=(0, 20))
 
         self.info_lbl = tk.Label(self.sidebar, text="", font=("Segoe UI", 11), bg=BG_CARD, justify="left")
         self.info_lbl.pack(anchor="w", pady=(0, 30))
         
         ttk.Button(self.sidebar, text="💡 USE HINT", style="Secondary.TButton", command=self.use_hint).pack(fill="x", pady=5)
+        ttk.Button(self.sidebar, text="🏳️ GIVE UP", style="Secondary.TButton", command=self.give_up).pack(fill="x", pady=5)
         ttk.Button(self.sidebar, text="✅ SUBMIT", style="Main.TButton", command=self.check_result).pack(fill="x", pady=(20, 5))
         ttk.Button(self.sidebar, text="QUIT", style="Secondary.TButton", command=self.exit_game).pack(fill="x", pady=5)
 
@@ -249,6 +258,7 @@ class GamePage(tk.Frame):
             self.after(1000, self.update_timer)
 
     def update_info(self):
+        self.mistake_lbl.config(text=f"{self.controller.mistakes} / {self.controller.max_mistakes}")
         self.info_lbl.config(text=f"PLAYER: {self.controller.player_name}\n"
                                   f"MODE: {self.controller.grid_size}x{self.controller.grid_size}\n"
                                   f"HINTS: {self.controller.hints_left} Left")
@@ -277,7 +287,7 @@ class GamePage(tk.Frame):
                 else:
                     entry = tk.Entry(self.canvas, font=("Segoe UI", int(18*(9/size))), justify="center", bd=0, bg="#f8fafc", fg=PRIMARY)
                     self.canvas.create_window(mid_x, mid_y, window=entry, width=cell_size-4, height=cell_size-4)
-                    entry.bind("<KeyRelease>", lambda e: self.validate_grid())
+                    entry.bind("<KeyRelease>", lambda e, row=r, col=c, ent=entry: self.handle_input(e, row, col, ent))
                     self.controller.player_entries.append((r, c, entry))
                     
         for i in range(size + 1):
@@ -285,6 +295,40 @@ class GamePage(tk.Frame):
             self.canvas.create_line(i * cell_size, 0, i * cell_size, canvas_w, width=lw)
             lw = 3 if i % sr == 0 else 1
             self.canvas.create_line(0, i * cell_size, canvas_w, i * cell_size, width=lw)
+
+    def handle_input(self, event, r, c, ent):
+        val = ent.get().strip()
+        if not val: return
+        if not val.isdigit():
+            ent.delete(0, tk.END)
+            return
+
+        # Mistake detection logic
+        if int(val) != self.controller.solution[r][c]:
+            self.controller.mistakes += 1
+            ent.config(fg=ERROR_COLOR)
+            self.update_info()
+            if self.controller.mistakes >= self.controller.max_mistakes:
+                self.game_over_loss()
+        else:
+            ent.config(fg=PRIMARY)
+            
+        self.validate_grid()
+
+    def game_over_loss(self):
+        self.controller.timer_running = False
+        messagebox.showerror("GAME OVER", "You've made 5 mistakes! Better luck next time.")
+        self.controller.show_frame(StartPage)
+
+    def give_up(self):
+        if messagebox.askyesno("Confirm", "Are you sure you want to give up and see the solution?"):
+            self.controller.timer_running = False
+            for r, c, ent in self.controller.player_entries:
+                sol = self.controller.solution[r][c]
+                ent.delete(0, tk.END)
+                ent.insert(0, str(sol))
+                ent.config(state="readonly", fg=ACCENT)
+            messagebox.showinfo("Given Up", "The complete solution is now displayed.")
 
     def validate_grid(self):
         size = self.controller.grid_size
@@ -297,9 +341,7 @@ class GamePage(tk.Frame):
 
         for r, c, ent in self.controller.player_entries:
             val = current_data[r][c]
-            if val == 0:
-                ent.config(fg=PRIMARY)
-                continue
+            if val == 0: continue
             
             is_err = False
             if current_data[r].count(val) > 1: is_err = True
@@ -309,6 +351,8 @@ class GamePage(tk.Frame):
             subgrid = [current_data[box_r+i][box_c+j] for i in range(sr) for j in range(sc)]
             if subgrid.count(val) > 1: is_err = True
             
+            # Highlight incorrect entries in red
+            if val != self.controller.solution[r][c]: is_err = True
             ent.config(fg=ERROR_COLOR if is_err else PRIMARY)
 
     def use_hint(self):
@@ -324,37 +368,21 @@ class GamePage(tk.Frame):
             self.update_info()
 
     def check_result(self):
-        size = self.controller.grid_size
-        sr, sc = self.controller.sub_rows, self.controller.sub_cols
-        board = copy.deepcopy(self.controller.current_puzzle)
-        
-        # 1. Thu thập dữ liệu
+        correct = True
         for r, c, ent in self.controller.player_entries:
             val = ent.get().strip()
-            if not val:
-                messagebox.showwarning("Incomplete", "Vui lòng điền hết các ô!", parent=self)
-                return
-            board[r][c] = int(val)
+            if not val or int(val) != self.controller.solution[r][c]:
+                correct = False
+                break
 
-        # 2. Logic kiểm tra tính đúng đắn
-        def is_valid_sol(b):
-            for i in range(size):
-                if len(set(b[i])) != size or 0 in b[i]: return False
-                if len(set(row[i] for row in b)) != size: return False
-            for r in range(0, size, sr):
-                for c in range(0, size, sc):
-                    block = [b[r+i][c+j] for i in range(sr) for j in range(sc)]
-                    if len(set(block)) != size: return False
-            return True
-
-        if is_valid_sol(board):
+        if correct:
             self.controller.timer_running = False
             elapsed = int(time.time() - self.controller.start_time)
             self.controller.save_score(elapsed)
-            messagebox.showinfo("VICTORY", f"Tuyệt vời! Bạn đã thắng trong {elapsed} giây.", parent=self)
+            messagebox.showinfo("VICTORY", f"Fantastic! You solved it in {elapsed} seconds.")
             self.controller.show_frame(ResultPage)
         else:
-            messagebox.showerror("Error", "Lời giải chưa đúng, hãy kiểm tra các ô màu đỏ!", parent=self)
+            messagebox.showwarning("Incomplete", "The grid is not yet complete or has errors!")
 
     def exit_game(self):
         self.controller.timer_running = False
@@ -389,7 +417,7 @@ class LeaderboardPage(tk.Frame):
             self.tree.insert("", "end", values=(s['player'], s['grid'], s['difficulty'], f"{m:02d}:{sec:02d}", s['date']))
 
     def clear_scores(self):
-        if messagebox.askyesno("Confirm", "Bạn có chắc muốn xóa hết lịch sử điểm không?"):
+        if messagebox.askyesno("Confirm", "Are you sure you want to clear all high scores?"):
             if os.path.exists(self.controller.scores_file): os.remove(self.controller.scores_file)
             self.on_show()
 
