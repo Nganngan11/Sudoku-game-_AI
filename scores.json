@@ -1,15 +1,9 @@
-{
-  "1": [
+[
     {
-      "name": "Ng\u00e2n",
-      "score": 1,
-      "time": 11,
-      "difficulty": 1,
-      "hint_used": true,
-      "date": "2026-01-10 02:08"
+        "player": "N",
+        "grid": "3x3",
+        "difficulty": "Easy",
+        "time_seconds": 7,
+        "date": "2026-01-11 00:18"
     }
-  ],
-  "2": [],
-  "3": [],
-  "4": []
-}
+]
