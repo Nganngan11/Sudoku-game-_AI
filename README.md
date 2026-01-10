@@ -14,3 +14,5 @@ When the user solves a problem, we store their score in a dataset so that we can
 Please store all the files in the same directory and then execute Sudoku.py file to run the game.
 
 This is open to everyone. You can make changes in it and try to imporve the code.
+
+# Sudoku-game-_AI
