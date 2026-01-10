@@ -11,4 +11,4 @@ This project implements a Sudoku game using Artificial Intelligence techniques.
 - Python
 
 ## Author
-- Ngan Nguyen
+- Group 10
