@@ -244,12 +244,6 @@ class GamePage(tk.Frame):
         self.canvas_frame = tk.Frame(self.main_container, bg=BG_MAIN); self.canvas_frame.pack(side="left", expand=True)
         self.canvas = None
 
-    def on_show(self):
-        # Đảm bảo nút Submit hiện lại nếu chơi ván mới
-        self.submit_btn.pack(fill="x", pady=(15, 5), after=self.giveup_btn)
-        self.controller.timer_running = True
-        self.draw_grid(); self.update_info(); self.update_timer()
-
     def update_timer(self):
         if self.controller.timer_running:
             elapsed = int(time.time() - self.controller.start_time)
@@ -336,6 +330,16 @@ class GamePage(tk.Frame):
             ent.config(fg=TEXT_DARK, state="readonly") 
             
         messagebox.showinfo("Solution Revealed", "The CSP solver has completed the board for you.")
+
+    def on_show(self):
+        self.submit_btn.pack(fill="x", pady=(15, 5), after=self.giveup_btn)
+        
+        self.hint_btn.config(state="normal") 
+        
+        self.controller.timer_running = True
+        self.draw_grid()
+        self.update_info()
+        self.update_timer()
 
     def check_result(self):
         for r, c, ent in self.controller.player_entries:
