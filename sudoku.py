@@ -259,9 +259,13 @@ class GamePage(tk.Frame):
     def draw_grid(self):
         if self.canvas: self.canvas.destroy()
         size = self.controller.grid_size
+        
         cell_size = 600 // size
-        self.canvas = tk.Canvas(self.canvas_frame, width=600, height=600, bg="white", highlightthickness=2, highlightbackground=TEXT_DARK)
+        actual_size = cell_size * size 
+        
+        self.canvas = tk.Canvas(self.canvas_frame, width=actual_size, height=actual_size, bg="white", highlightthickness=2, highlightbackground=TEXT_DARK)
         self.canvas.pack()
+        
         self.controller.player_entries = []
         puzzle = self.controller.current_puzzle
         for r in range(size):
@@ -277,13 +281,13 @@ class GamePage(tk.Frame):
                     entry.bind("<KeyRelease>", lambda e, row=r, col=c, ent=entry: self.handle_input(row, col, ent))
                     self.controller.player_entries.append((r, c, entry))
         
-        grid_px = cell_size * size
-
+    
         for i in range(1, size):
             lw = 3 if i % self.controller.sub_cols == 0 else 1
-            self.canvas.create_line(i * cell_size, 0, i * cell_size, 600, width=lw)
+            self.canvas.create_line(i * cell_size, 0, i * cell_size, actual_size, width=lw)
+            
             lw = 3 if i % self.controller.sub_rows == 0 else 1
-            self.canvas.create_line(0, i * cell_size, 600, i * cell_size, width=lw)
+            self.canvas.create_line(0, i * cell_size, actual_size, i * cell_size, width=lw)
 
     def handle_input(self, r, c, ent):
         val = ent.get().strip()
