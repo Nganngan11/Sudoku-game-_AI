@@ -276,7 +276,10 @@ class GamePage(tk.Frame):
                     self.canvas.create_window(mid_x, mid_y, window=entry, width=cell_size-4, height=cell_size-4)
                     entry.bind("<KeyRelease>", lambda e, row=r, col=c, ent=entry: self.handle_input(row, col, ent))
                     self.controller.player_entries.append((r, c, entry))
-        for i in range(size + 1):
+        
+        grid_px = cell_size * size
+
+        for i in range(1, size):
             lw = 3 if i % self.controller.sub_cols == 0 else 1
             self.canvas.create_line(i * cell_size, 0, i * cell_size, 600, width=lw)
             lw = 3 if i % self.controller.sub_rows == 0 else 1
