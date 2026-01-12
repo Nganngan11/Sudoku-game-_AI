@@ -257,30 +257,76 @@ class GamePage(tk.Frame):
         self.info_lbl.config(text=f"Player: {self.controller.player_name}\nSize: {self.controller.grid_size}x{self.controller.grid_size}")
 
     def draw_grid(self):
-        if self.canvas: self.canvas.destroy()
+        if self.canvas:
+            self.canvas.destroy()
+
         size = self.controller.grid_size
-        cell_size = 600 // size
-        self.canvas = tk.Canvas(self.canvas_frame, width=600, height=600, bg="white", highlightthickness=2, highlightbackground=TEXT_DARK)
+
+        CANVAS_SIZE = 600
+        cell_size = CANVAS_SIZE // size
+        grid_px = cell_size * size 
+
+        self.canvas = tk.Canvas(
+            self.canvas_frame,
+            width=grid_px,
+            height=grid_px,
+            bg="white",
+            highlightthickness=2,
+            highlightbackground=TEXT_DARK
+       )
         self.canvas.pack()
+
         self.controller.player_entries = []
         puzzle = self.controller.current_puzzle
+
+    # Vẽ các ô
         for r in range(size):
             for c in range(size):
-                x1, y1 = c * cell_size, r * cell_size
-                mid_x, mid_y = x1 + cell_size/2, y1 + cell_size/2
-                if puzzle[r][c] != 0:
-                    self.canvas.create_rectangle(x1, y1, x1+cell_size, y1+cell_size, outline=BORDER, fill="#fdfdfd")
-                    self.canvas.create_text(mid_x, mid_y, text=str(puzzle[r][c]), font=("Segoe UI", int(20*(9/size)), "bold"), fill=TEXT_DARK)
-                else:
-                    entry = tk.Entry(self.canvas, font=("Segoe UI", int(18*(9/size))), justify="center", bd=0, bg="#f8fafc", fg=PRIMARY)
-                    self.canvas.create_window(mid_x, mid_y, window=entry, width=cell_size-4, height=cell_size-4)
-                    entry.bind("<KeyRelease>", lambda e, row=r, col=c, ent=entry: self.handle_input(row, col, ent))
-                    self.controller.player_entries.append((r, c, entry))
+                x1 = c * cell_size
+                y1 = r * cell_size
+                mid_x = x1 + cell_size / 2
+                mid_y = y1 + cell_size / 2
+
+            if puzzle[r][c] != 0:
+                self.canvas.create_rectangle(
+                    x1, y1, x1 + cell_size, y1 + cell_size,
+                    outline=BORDER, fill="#fdfdfd"
+                )
+                self.canvas.create_text(
+                    mid_x, mid_y,
+                    text=str(puzzle[r][c]),
+                    font=("Segoe UI", int(20 * (9 / size)), "bold"),
+                    fill=TEXT_DARK
+                )
+            else:
+                entry = tk.Entry(
+                    self.canvas,
+                    font=("Segoe UI", int(18 * (9 / size))),
+                    justify="center",
+                    bd=0,
+                    bg="#f8fafc",
+                    fg=PRIMARY
+                )
+                self.canvas.create_window(
+                    mid_x, mid_y,
+                    window=entry,
+                    width=cell_size - 4,
+                    height=cell_size - 4
+                )
+                entry.bind(
+                    "<KeyRelease>",
+                    lambda e, row=r, col=c, ent=entry:
+                        self.handle_input(row, col, ent)
+                )
+                self.controller.player_entries.append((r, c, entry))
+    
         for i in range(size + 1):
             lw = 3 if i % self.controller.sub_cols == 0 else 1
-            self.canvas.create_line(i * cell_size, 0, i * cell_size, 600, width=lw)
+            pos = i * cell_size
+            self.canvas.create_line(pos, 0, pos, grid_px, width=lw)
+
             lw = 3 if i % self.controller.sub_rows == 0 else 1
-            self.canvas.create_line(0, i * cell_size, 600, i * cell_size, width=lw)
+            self.canvas.create_line(0, pos, grid_px, pos, width=lw)
 
     def handle_input(self, r, c, ent):
         val = ent.get().strip()
