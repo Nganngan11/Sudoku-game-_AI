@@ -12,5 +12,19 @@
         "difficulty": "Medium",
         "time_seconds": 15,
         "date": "2026-01-11 00:25"
+    },
+    {
+        "player": "NN",
+        "grid": "3x3",
+        "difficulty": "Easy",
+        "time_seconds": 10,
+        "date": "2026-01-13 22:05"
+    },
+    {
+        "player": "NN",
+        "grid": "3x3",
+        "difficulty": "Easy",
+        "time_seconds": 8,
+        "date": "2026-01-14 00:10"
     }
 ]
